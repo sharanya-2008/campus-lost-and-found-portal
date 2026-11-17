@@ -1,54 +1,156 @@
+// ========================================
+// CAMPUS LOST AND FOUND PORTAL
+// ========================================
+
+// Your deployed Render backend URL
+const API_BASE_URL =
+    "https://campus-lost-and-found-portal-1-ineb.onrender.com";
+
 const itemsList = document.getElementById("itemsList");
 
+// ========================================
+// COMMON HELPER FUNCTIONS
+// ========================================
+
+async function apiRequest(endpoint, options = {}) {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+        throw new Error(result.message || "Something went wrong.");
+    }
+
+    return result;
+}
+
+function getData(result) {
+    return result.data ?? result;
+}
+
+function getToken() {
+    return localStorage.getItem("token");
+}
+
+function authHeaders() {
+    return {
+        "Authorization": "Bearer " + getToken()
+    };
+}
+
+function setMessage(element, message, color = "red") {
+    if (!element) return;
+
+    element.textContent = message;
+    element.style.color = color;
+}
+
+function createElement(tag, className, text) {
+    const element = document.createElement(tag);
+
+    if (className) element.className = className;
+    if (text !== undefined) element.textContent = text;
+
+    return element;
+}
+
+// ========================================
+// DISPLAY ITEMS
+// ========================================
+
 function displayItems(items) {
+    if (!itemsList) return;
+
     itemsList.innerHTML = "";
 
     if (!Array.isArray(items) || items.length === 0) {
-        itemsList.innerHTML = "<p>No items found.</p>";
+        itemsList.textContent = "No items found.";
         return;
     }
 
     items.forEach(item => {
-        const card = document.createElement("div");
-        card.className = "item-card";
+        const card = createElement("div", "item-card");
 
-        const typeClass = String(item.type || "").toLowerCase();
-        const statusClass = String(item.status || "").toLowerCase();
+        const top = createElement("div", "card-top");
 
-        card.innerHTML = `
-            <div class="card-top">
-                <span class="type-badge ${typeClass}">
-                    ${item.type || "Unknown"}
-                </span>
+        const typeClass = String(item.type || "")
+            .toLowerCase()
+            .replace(/[^a-z0-9-]/g, "");
 
-                <span class="status-badge ${statusClass}">
-                    ${item.status || "Unknown"}
-                </span>
-            </div>
+        const statusClass = String(item.status || "")
+            .toLowerCase()
+            .replace(/[^a-z0-9-]/g, "");
 
-            <h3>${item.itemName || "Unnamed Item"}</h3>
+        const typeBadge = createElement(
+            "span",
+            `type-badge ${typeClass}`,
+            item.type || "Unknown"
+        );
 
-            <p>${item.description || "No description available."}</p>
+        const statusBadge = createElement(
+            "span",
+            `status-badge ${statusClass}`,
+            item.status || "Unknown"
+        );
 
-            <p><strong>Category:</strong> ${item.category || "Not specified"}</p>
+        top.append(typeBadge, statusBadge);
 
-            <p><strong>Location:</strong> ${item.location || "Not specified"}</p>
+        const heading = createElement(
+            "h3",
+            "",
+            item.itemName || "Unnamed Item"
+        );
 
-            <p class="item-id">
-                <strong>Item ID:</strong> ${item._id}
-            </p>
+        const description = createElement(
+            "p",
+            "",
+            item.description || "No description available."
+        );
 
-            <button
-                type="button"
-                class="claim-item-button"
-                data-item-id="${item._id}">
-                Claim This Item
-            </button>
-        `;
+        const category = createElement(
+            "p",
+            "",
+            `Category: ${item.category || "Not specified"}`
+        );
+
+        const location = createElement(
+            "p",
+            "",
+            `Location: ${item.location || "Not specified"}`
+        );
+
+        const itemId = createElement(
+            "p",
+            "item-id",
+            `Item ID: ${item._id || "Unavailable"}`
+        );
+
+        const claimButton = createElement(
+            "button",
+            "claim-item-button",
+            "Claim This Item"
+        );
+
+        claimButton.type = "button";
+        claimButton.dataset.itemId = item._id || "";
+
+        card.append(
+            top,
+            heading,
+            description,
+            category,
+            location,
+            itemId,
+            claimButton
+        );
 
         itemsList.appendChild(card);
     });
 }
+
+// ========================================
+// DASHBOARD STATISTICS
+// ========================================
 
 function updateDashboardStats(items) {
     if (!Array.isArray(items)) return;
@@ -58,9 +160,7 @@ function updateDashboardStats(items) {
     const foundItems = document.getElementById("foundItems");
     const resolvedItems = document.getElementById("resolvedItems");
 
-    if (totalItems) {
-        totalItems.textContent = items.length;
-    }
+    if (totalItems) totalItems.textContent = items.length;
 
     if (lostItems) {
         lostItems.textContent = items.filter(
@@ -81,35 +181,27 @@ function updateDashboardStats(items) {
     }
 }
 
-
 // ========================================
 // LOAD ALL ITEMS
 // ========================================
 
 async function loadItems() {
+    if (!itemsList) return;
+
     try {
-        const response = await fetch("http://localhost:5000/api/items");
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.message || "Unable to load items.");
-        }
-
-        const items = result.data || result;
+        const result = await apiRequest("/api/items");
+        const items = getData(result);
 
         updateDashboardStats(items);
         displayItems(items);
 
     } catch (error) {
-        itemsList.innerHTML =
-            "<p>Unable to load items. Please check the backend.</p>";
+        itemsList.textContent =
+            "Unable to load items. Please check the backend.";
 
-        console.error(error);
+        console.error("Load items error:", error);
     }
 }
-
-loadItems();
-
 
 // ========================================
 // LOGIN
@@ -119,71 +211,62 @@ const loginForm = document.getElementById("loginForm");
 const loginMessage = document.getElementById("loginMessage");
 const logoutButton = document.getElementById("logoutButton");
 
-loginForm.addEventListener("submit", async function(event) {
-    event.preventDefault();
+if (loginForm) {
+    loginForm.addEventListener("submit", async function(event) {
+        event.preventDefault();
 
-    const email = loginForm.email.value;
-    const password = loginForm.password.value;
+        const email = loginForm.elements.email.value.trim();
+        const password = loginForm.elements.password.value;
 
-    try {
-        const response = await fetch(
-            "http://localhost:5000/api/auth/login",
-            {
+        try {
+            const result = await apiRequest("/api/auth/login", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({ email, password })
+            });
+
+            if (!result.token) {
+                throw new Error("Login response did not contain a token.");
             }
-        );
 
-        const result = await response.json();
-
-        if (response.ok) {
             localStorage.setItem("token", result.token);
 
-            loginMessage.textContent = "Login successful!";
-            loginMessage.style.color = "green";
+            setMessage(loginMessage, "Login successful!", "green");
 
-            logoutButton.style.display = "inline-block";
-        } else {
-            loginMessage.textContent =
-                result.message || "Login failed";
+            if (logoutButton) {
+                logoutButton.style.display = "inline-block";
+            }
 
-            loginMessage.style.color = "red";
+        } catch (error) {
+            setMessage(loginMessage, error.message);
+            console.error("Login error:", error);
         }
-
-    } catch (error) {
-        loginMessage.textContent =
-            "Cannot connect to the server.";
-
-        loginMessage.style.color = "red";
-        console.error(error);
-    }
-});
-
+    });
+}
 
 // ========================================
 // LOGOUT
 // ========================================
 
-logoutButton.addEventListener("click", function() {
-    localStorage.removeItem("token");
+if (logoutButton) {
+    logoutButton.addEventListener("click", function() {
+        localStorage.removeItem("token");
 
-    logoutButton.style.display = "none";
+        logoutButton.style.display = "none";
 
-    loginMessage.textContent =
-        "You have logged out successfully.";
+        setMessage(
+            loginMessage,
+            "You have logged out successfully.",
+            "green"
+        );
+    });
 
-    loginMessage.style.color = "green";
-});
-
-if (localStorage.getItem("token")) {
-    logoutButton.style.display = "inline-block";
-} else {
-    logoutButton.style.display = "none";
+    logoutButton.style.display = getToken()
+        ? "inline-block"
+        : "none";
 }
-
 
 // ========================================
 // REGISTER
@@ -192,54 +275,41 @@ if (localStorage.getItem("token")) {
 const registerForm = document.getElementById("registerForm");
 const registerMessage = document.getElementById("registerMessage");
 
-registerForm.addEventListener("submit", async function(event) {
-    event.preventDefault();
+if (registerForm) {
+    registerForm.addEventListener("submit", async function(event) {
+        event.preventDefault();
 
-    const formData = new FormData(registerForm);
+        const formData = new FormData(registerForm);
 
-    const userData = {
-        name: formData.get("name"),
-        email: formData.get("email"),
-        password: formData.get("password")
-    };
+        const userData = {
+            name: formData.get("name"),
+            email: formData.get("email"),
+            password: formData.get("password")
+        };
 
-    try {
-        const response = await fetch(
-            "http://localhost:5000/api/auth/register",
-            {
+        try {
+            await apiRequest("/api/auth/register", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify(userData)
-            }
-        );
+            });
 
-        const result = await response.json();
+            setMessage(
+                registerMessage,
+                "Registration successful! Please login.",
+                "green"
+            );
 
-        if (response.ok) {
-            registerMessage.textContent =
-                "Registration successful! Please login.";
-
-            registerMessage.style.color = "green";
             registerForm.reset();
 
-        } else {
-            registerMessage.textContent =
-                result.message || "Registration failed.";
-
-            registerMessage.style.color = "red";
+        } catch (error) {
+            setMessage(registerMessage, error.message);
+            console.error("Registration error:", error);
         }
-
-    } catch (error) {
-        registerMessage.textContent =
-            "Cannot connect to the server.";
-
-        registerMessage.style.color = "red";
-        console.error(error);
-    }
-});
-
+    });
+}
 
 // ========================================
 // SEARCH ITEMS
@@ -250,43 +320,41 @@ const searchButton = document.getElementById("searchButton");
 const showAllButton = document.getElementById("showAllButton");
 
 async function searchItems() {
+    if (!searchInput) return;
+
     const searchValue = searchInput.value.trim();
 
     if (!searchValue) {
-        loadItems();
+        await loadItems();
         return;
     }
 
     try {
-        const response = await fetch(
-            `http://localhost:5000/api/items/search?name=${encodeURIComponent(searchValue)}`
+        const result = await apiRequest(
+            `/api/items/search?name=${encodeURIComponent(searchValue)}`
         );
 
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.message || "Search failed.");
-        }
-
-        const items = result.data || result;
-
-        displayItems(items);
+        displayItems(getData(result));
 
     } catch (error) {
-        itemsList.innerHTML =
-            "<p>Search failed. Check the backend.</p>";
+        if (itemsList) {
+            itemsList.textContent = "Search failed.";
+        }
 
-        console.error(error);
+        console.error("Search error:", error);
     }
 }
 
-searchButton.addEventListener("click", searchItems);
+if (searchButton) {
+    searchButton.addEventListener("click", searchItems);
+}
 
-showAllButton.addEventListener("click", function() {
-    searchInput.value = "";
-    loadItems();
-});
-
+if (showAllButton) {
+    showAllButton.addEventListener("click", function() {
+        if (searchInput) searchInput.value = "";
+        loadItems();
+    });
+}
 
 // ========================================
 // FILTER BY TYPE
@@ -296,49 +364,47 @@ const typeFilter = document.getElementById("typeFilter");
 const filterButton = document.getElementById("filterButton");
 
 async function filterItems() {
-    const selectedType = typeFilter.value;
+    const selectedType = typeFilter ? typeFilter.value : "";
 
     if (!selectedType) {
-        loadItems();
+        await loadItems();
         return;
     }
 
     try {
-        const response = await fetch(
-            `http://localhost:5000/api/items/filter?type=${encodeURIComponent(selectedType)}`
+        const result = await apiRequest(
+            `/api/items/filter?type=${encodeURIComponent(selectedType)}`
         );
 
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.message || "Filter failed.");
-        }
-
-        const items = result.data || result;
-
-        displayItems(items);
+        displayItems(getData(result));
 
     } catch (error) {
-        itemsList.innerHTML =
-            "<p>Filter failed. Check the backend.</p>";
+        if (itemsList) {
+            itemsList.textContent = "Filter failed.";
+        }
 
-        console.error(error);
+        console.error("Filter error:", error);
     }
 }
 
-filterButton.addEventListener("click", filterItems);
-
+if (filterButton) {
+    filterButton.addEventListener("click", filterItems);
+}
 
 // ========================================
 // FILTER BY CATEGORY AND TYPE
 // ========================================
 
 const categoryFilter = document.getElementById("categoryFilter");
-const categoryFilterButton = document.getElementById("categoryFilterButton");
+const categoryFilterButton =
+    document.getElementById("categoryFilterButton");
 
 async function filterByCategory() {
-    const selectedCategory = categoryFilter.value;
-    const selectedType = typeFilter.value;
+    const selectedCategory = categoryFilter
+        ? categoryFilter.value
+        : "";
+
+    const selectedType = typeFilter ? typeFilter.value : "";
 
     const params = new URLSearchParams();
 
@@ -351,35 +417,32 @@ async function filterByCategory() {
     }
 
     if (!selectedCategory && !selectedType) {
-        loadItems();
+        await loadItems();
         return;
     }
 
     try {
-        const response = await fetch(
-            `http://localhost:5000/api/items/filter?${params.toString()}`
+        const result = await apiRequest(
+            `/api/items/filter?${params.toString()}`
         );
 
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.message || "Category filter failed.");
-        }
-
-        const items = result.data || result;
-
-        displayItems(items);
+        displayItems(getData(result));
 
     } catch (error) {
-        itemsList.innerHTML =
-            "<p>Category filter failed.</p>";
+        if (itemsList) {
+            itemsList.textContent = "Category filter failed.";
+        }
 
-        console.error(error);
+        console.error("Category filter error:", error);
     }
 }
 
-categoryFilterButton.addEventListener("click", filterByCategory);
-
+if (categoryFilterButton) {
+    categoryFilterButton.addEventListener(
+        "click",
+        filterByCategory
+    );
+}
 
 // ========================================
 // REPORT LOST OR FOUND ITEM
@@ -388,145 +451,140 @@ categoryFilterButton.addEventListener("click", filterByCategory);
 const reportForm = document.getElementById("reportForm");
 const reportMessage = document.getElementById("reportMessage");
 
-reportForm.addEventListener("submit", async function(event) {
-    event.preventDefault();
+if (reportForm) {
+    reportForm.addEventListener("submit", async function(event) {
+        event.preventDefault();
 
-    const token = localStorage.getItem("token");
+        const token = getToken();
 
-    if (!token) {
-        reportMessage.textContent = "Please login first.";
-        reportMessage.style.color = "red";
-        return;
-    }
+        if (!token) {
+            setMessage(reportMessage, "Please login first.");
+            return;
+        }
 
-    const formData = new FormData(reportForm);
+        const formData = new FormData(reportForm);
 
-    const itemData = {
-        itemName: formData.get("itemName"),
-        description: formData.get("description"),
-        category: formData.get("category"),
-        type: formData.get("type"),
-        location: formData.get("location"),
-        date: formData.get("date")
-    };
+        const itemData = {
+            itemName: formData.get("itemName"),
+            description: formData.get("description"),
+            category: formData.get("category"),
+            type: formData.get("type"),
+            location: formData.get("location"),
+            date: formData.get("date")
+        };
 
-    try {
-        const response = await fetch(
-            "http://localhost:5000/api/items",
-            {
+        try {
+            await apiRequest("/api/items", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": "Bearer " + token
+                    ...authHeaders()
                 },
                 body: JSON.stringify(itemData)
-            }
-        );
+            });
 
-        const result = await response.json();
-
-        if (response.ok) {
-            reportMessage.textContent =
-                "Item reported successfully!";
-
-            reportMessage.style.color = "green";
+            setMessage(
+                reportMessage,
+                "Item reported successfully!",
+                "green"
+            );
 
             reportForm.reset();
 
-            loadItems();
+            await loadItems();
 
-        } else {
-            reportMessage.textContent =
-                result.message || "Unable to report item.";
+        } catch (error) {
+            setMessage(reportMessage, error.message);
+            console.error("Report item error:", error);
+        }
+    });
+}
 
-            reportMessage.style.color = "red";
+// ========================================
+// SELECT ITEM TO CLAIM
+// ========================================
+
+const claimForm = document.getElementById("claimForm");
+const claimMessage = document.getElementById("claimMessage");
+
+if (itemsList && claimForm) {
+    itemsList.addEventListener("click", function(event) {
+        const button = event.target.closest(".claim-item-button");
+
+        if (!button) return;
+
+        const itemId = button.dataset.itemId;
+
+        const itemIdInput = claimForm.elements.itemId;
+
+        if (itemIdInput) {
+            itemIdInput.value = itemId;
         }
 
-    } catch (error) {
-        reportMessage.textContent =
-            "Server connection failed.";
+        const claimSection = document.getElementById("claim");
 
-        reportMessage.style.color = "red";
-        console.error(error);
-    }
-});
-
+        if (claimSection) {
+            claimSection.scrollIntoView({
+                behavior: "smooth"
+            });
+        }
+    });
+}
 
 // ========================================
 // SUBMIT CLAIM
 // ========================================
 
-const claimForm = document.getElementById("claimForm");
+if (claimForm) {
+    claimForm.addEventListener("submit", async function(event) {
+        event.preventDefault();
 
-itemsList.addEventListener("click", function(event) {
-    const button = event.target.closest(".claim-item-button");
+        const token = getToken();
 
-    if (!button) return;
-
-    const itemId = button.dataset.itemId;
-
-    claimForm.elements.itemId.value = itemId;
-
-    document.getElementById("claim").scrollIntoView({
-        behavior: "smooth"
-    });
-});
-
-const claimMessage = document.getElementById("claimMessage");
-
-claimForm.addEventListener("submit", async function(event) {
-    event.preventDefault();
-
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-        claimMessage.textContent = "Please login first.";
-        claimMessage.style.color = "red";
-        return;
-    }
-
-    const formData = new FormData(claimForm);
-
-    const itemId = formData.get("itemId");
-    const message = formData.get("message");
-
-    try {
-        const response = await fetch(
-            `http://localhost:5000/api/claims/${itemId}`,
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer " + token
-                },
-                body: JSON.stringify({ message })
-            }
-        );
-
-        const result = await response.json();
-
-        if (response.ok) {
-            claimMessage.textContent =
-                "Claim submitted successfully!";
-
-            claimMessage.style.color = "green";
-            claimForm.reset();
-
-        } else {
-            claimMessage.textContent =
-                result.message || "Claim submission failed.";
-
-            claimMessage.style.color = "red";
+        if (!token) {
+            setMessage(claimMessage, "Please login first.");
+            return;
         }
 
-    } catch (error) {
-        claimMessage.textContent =
-            "Cannot connect to the server.";
+        const formData = new FormData(claimForm);
 
-        console.error(error);
-    }
-});
+        const itemId = formData.get("itemId");
+        const message = formData.get("message");
 
+        if (!itemId) {
+            setMessage(claimMessage, "Please select an item first.");
+            return;
+        }
+
+        try {
+            await apiRequest(
+                `/api/claims/${encodeURIComponent(itemId)}`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...authHeaders()
+                    },
+                    body: JSON.stringify({ message })
+                }
+            );
+
+            setMessage(
+                claimMessage,
+                "Claim submitted successfully!",
+                "green"
+            );
+
+            claimForm.reset();
+
+            await loadMyClaims();
+
+        } catch (error) {
+            setMessage(claimMessage, error.message);
+            console.error("Claim submission error:", error);
+        }
+    });
+}
 
 // ========================================
 // VIEW MY CLAIMS
@@ -536,114 +594,90 @@ const myClaimsButton = document.getElementById("myClaimsButton");
 const myClaimsList = document.getElementById("myClaimsList");
 
 async function loadMyClaims() {
-    const token = localStorage.getItem("token");
+    if (!myClaimsList) return;
+
+    const token = getToken();
 
     if (!token) {
-        myClaimsList.innerHTML =
-            "<p>Please login first.</p>";
+        myClaimsList.textContent = "Please login first.";
         return;
     }
 
     try {
-        const response = await fetch(
-            "http://localhost:5000/api/claims/my-claims",
-            {
-                headers: {
-                    "Authorization": "Bearer " + token
-                }
-            }
-        );
+        const result = await apiRequest("/api/claims/my-claims", {
+            headers: authHeaders()
+        });
 
-        const result = await response.json();
-
-        if (response.ok) {
-    claimMessage.textContent =
-        "Your claim has been submitted successfully!";
-
-    claimMessage.style.color = "green";
-
-    claimForm.reset();
-
-    await loadMyClaims();
-}
-
-        const claims = result.data || [];
+        const claims = getData(result);
 
         myClaimsList.innerHTML = "";
 
-        if (claims.length === 0) {
-            myClaimsList.innerHTML =
-                "<p>You have not submitted any claims yet.</p>";
+        if (!Array.isArray(claims) || claims.length === 0) {
+            myClaimsList.textContent =
+                "You have not submitted any claims yet.";
             return;
         }
 
         claims.forEach(claim => {
-            const card = document.createElement("div");
-            card.className = "item-card";
+            const card = createElement("div", "item-card");
 
-            card.innerHTML = `
-                <h3>${claim.item ? claim.item.itemName : "Item unavailable"}</h3>
-                <p>Claim Message: ${claim.message}</p>
-                <p>Claim Status: ${claim.status}</p>
-            `;
+            const itemName = claim.item
+                ? claim.item.itemName
+                : "Item unavailable";
+
+            card.append(
+                createElement("h3", "", itemName),
+                createElement("p", "", `Claim Message: ${claim.message || ""}`),
+                createElement("p", "", `Claim Status: ${claim.status || "Pending"}`)
+            );
 
             myClaimsList.appendChild(card);
         });
 
     } catch (error) {
-        myClaimsList.innerHTML =
-            "<p>Server connection failed.</p>";
-
-        console.error(error);
+        myClaimsList.textContent = error.message;
+        console.error("My claims error:", error);
     }
 }
 
-myClaimsButton.addEventListener("click", loadMyClaims);
+if (myClaimsButton) {
+    myClaimsButton.addEventListener("click", loadMyClaims);
+}
+
+// ========================================
 // ADMIN CLAIM MANAGEMENT
+// ========================================
 
+const adminClaimsButton =
+    document.getElementById("adminClaimsButton");
 
-// ADMIN CLAIM MANAGEMENT
-
-const adminClaimsButton = document.getElementById("adminClaimsButton");
-const adminClaimsList = document.getElementById("adminClaimsList");
+const adminClaimsList =
+    document.getElementById("adminClaimsList");
 
 async function loadAllClaims() {
-    const token = localStorage.getItem("token");
+    if (!adminClaimsList) return;
 
-    if (!token) {
-        adminClaimsList.innerHTML = "<p>Please login as admin first.</p>";
+    if (!getToken()) {
+        adminClaimsList.textContent = "Please login as admin first.";
         return;
     }
 
     try {
-        const response = await fetch(
-            "http://localhost:5000/api/claims/all",
-            {
-                headers: {
-                    "Authorization": "Bearer " + token
-                }
-            }
-        );
+        const result = await apiRequest("/api/claims/all", {
+            headers: authHeaders()
+        });
 
-        const result = await response.json();
+        const claims = getData(result);
 
-        if (!response.ok) {
-            adminClaimsList.innerHTML =
-                `<p>${result.message || "Unable to load claims."}</p>`;
-            return;
-        }
-
-        const claims = result.data || [];
         adminClaimsList.innerHTML = "";
 
-        if (claims.length === 0) {
-            adminClaimsList.innerHTML = "<p>No claims found.</p>";
+        if (!Array.isArray(claims) || claims.length === 0) {
+            adminClaimsList.textContent = "No claims found.";
             return;
         }
 
         claims.forEach(claim => {
-            const card = document.createElement("div");
-            card.className = "item-card";
+            const card = createElement("div", "item-card");
 
             const itemName = claim.item
                 ? claim.item.itemName
@@ -653,82 +687,96 @@ async function loadAllClaims() {
                 ? claim.claimant.name
                 : "Unknown student";
 
-            card.innerHTML = `
-                <h3>${itemName}</h3>
-                <p><strong>Student:</strong> ${studentName}</p>
-                <p><strong>Message:</strong> ${claim.message}</p>
-                <p><strong>Status:</strong> ${claim.status}</p>
-                <p><strong>Claim ID:</strong> ${claim._id}</p>
+            card.append(
+                createElement("h3", "", itemName),
+                createElement("p", "", `Student: ${studentName}`),
+                createElement("p", "", `Message: ${claim.message || ""}`),
+                createElement("p", "", `Status: ${claim.status || "Pending"}`),
+                createElement("p", "", `Claim ID: ${claim._id}`)
+            );
 
-                ${
-                    !["Approved", "Rejected"].includes(claim.status)
-                    ? `
-                        <button class="approve-btn"
-                            data-id="${claim._id}"
-                            data-status="Approved">
-                            Approve
-                        </button>
+            if (!["Approved", "Rejected"].includes(claim.status)) {
+                const approveButton = createElement(
+                    "button",
+                    "approve-btn",
+                    "Approve"
+                );
 
-                        <button class="reject-btn"
-                            data-id="${claim._id}"
-                            data-status="Rejected">
-                            Reject
-                        </button>
-                    `
-                    : ""
-                }
-            `;
+                approveButton.type = "button";
+                approveButton.dataset.id = claim._id;
+                approveButton.dataset.status = "Approved";
+
+                const rejectButton = createElement(
+                    "button",
+                    "reject-btn",
+                    "Reject"
+                );
+
+                rejectButton.type = "button";
+                rejectButton.dataset.id = claim._id;
+                rejectButton.dataset.status = "Rejected";
+
+                card.append(approveButton, rejectButton);
+            }
 
             adminClaimsList.appendChild(card);
         });
 
     } catch (error) {
-        adminClaimsList.innerHTML = "<p>Server connection failed.</p>";
-        console.error(error);
+        adminClaimsList.textContent = error.message;
+        console.error("Admin claims error:", error);
     }
 }
 
-// Approve or Reject a claim
-adminClaimsList.addEventListener("click", async function(event) {
-    const button = event.target.closest(".approve-btn, .reject-btn");
+if (adminClaimsButton) {
+    adminClaimsButton.addEventListener("click", loadAllClaims);
+}
 
-    if (!button) return;
+// APPROVE OR REJECT CLAIM
 
-    const claimId = button.dataset.id;
-    const status = button.dataset.status;
-    const token = localStorage.getItem("token");
-
-    try {
-        const response = await fetch(
-            `http://localhost:5000/api/claims/${claimId}/status`,
-            {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer " + token
-                },
-                body: JSON.stringify({ status })
-            }
+if (adminClaimsList) {
+    adminClaimsList.addEventListener("click", async function(event) {
+        const button = event.target.closest(
+            ".approve-btn, .reject-btn"
         );
 
-        const result = await response.json();
+        if (!button) return;
 
-        if (!response.ok) {
-            alert(result.message || "Unable to update claim.");
+        const claimId = button.dataset.id;
+        const status = button.dataset.status;
+
+        if (!getToken()) {
+            alert("Please login as admin first.");
             return;
         }
 
-        alert(result.message);
-        await loadAllClaims();
+        try {
+            const result = await apiRequest(
+                `/api/claims/${encodeURIComponent(claimId)}/status`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...authHeaders()
+                    },
+                    body: JSON.stringify({ status })
+                }
+            );
 
-    } catch (error) {
-        alert("Server connection failed.");
-        console.error(error);
-    }
-});
+            alert(result.message || `Claim ${status.toLowerCase()}.`);
 
-adminClaimsButton.addEventListener("click", loadAllClaims);
+            await loadAllClaims();
+
+        } catch (error) {
+            alert(error.message);
+            console.error("Update claim error:", error);
+        }
+    });
+}
+
+// ========================================
 // MY REPORTED ITEMS
+// ========================================
 
 const myReportedItemsButton =
     document.getElementById("myReportedItemsButton");
@@ -737,76 +785,57 @@ const myReportedItemsList =
     document.getElementById("myReportedItemsList");
 
 async function loadMyReportedItems() {
-    const token = localStorage.getItem("token");
+    if (!myReportedItemsList) return;
 
-    if (!token) {
+    if (!getToken()) {
         myReportedItemsList.textContent = "Please login first.";
         return;
     }
 
     try {
-        const response = await fetch(
-            "http://localhost:5000/api/items/my-items",
-            {
-                headers: {
-                    "Authorization": "Bearer " + token
-                }
-            }
-        );
+        const result = await apiRequest("/api/items/my-items", {
+            headers: authHeaders()
+        });
 
-        const result = await response.json();
-
-        if (!response.ok) {
-            myReportedItemsList.textContent =
-                result.message || "Unable to load your items.";
-            return;
-        }
-
-        const items = result.data || [];
+        const items = getData(result);
 
         myReportedItemsList.innerHTML = "";
 
-        if (items.length === 0) {
+        if (!Array.isArray(items) || items.length === 0) {
             myReportedItemsList.textContent =
                 "You have not reported any items yet.";
             return;
         }
 
         items.forEach(item => {
-            const card = document.createElement("div");
-            card.className = "item-card";
+            const card = createElement("div", "item-card");
 
-            const heading = document.createElement("h3");
-            heading.textContent = item.itemName;
+            card.append(
+                createElement("h3", "", item.itemName || "Unnamed Item"),
+                createElement("p", "", `Type: ${item.type || ""} | Category: ${item.category || ""}`),
+                createElement("p", "", `Location: ${item.location || ""}`),
+                createElement("p", "", `Status: ${item.status || ""}`)
+            );
 
-            const details = document.createElement("p");
-            details.textContent =
-                "Type: " + item.type +
-                " | Category: " + item.category;
-
-            const location = document.createElement("p");
-            location.textContent = "Location: " + item.location;
-
-            const status = document.createElement("p");
-            status.textContent = "Status: " + item.status;
-
-            card.append(heading, details, location, status);
             myReportedItemsList.appendChild(card);
         });
 
     } catch (error) {
-        myReportedItemsList.textContent =
-            "Server connection failed.";
-
-        console.error(error);
+        myReportedItemsList.textContent = error.message;
+        console.error("My reported items error:", error);
     }
 }
 
-myReportedItemsButton.addEventListener(
-    "click",
-    loadMyReportedItems
-);
+if (myReportedItemsButton) {
+    myReportedItemsButton.addEventListener(
+        "click",
+        loadMyReportedItems
+    );
+}
+
+// ========================================
 // ADMIN ITEM MANAGEMENT
+// ========================================
 
 const adminItemsButton =
     document.getElementById("adminItemsButton");
@@ -815,132 +844,107 @@ const adminItemsList =
     document.getElementById("adminItemsList");
 
 async function loadAllItems() {
-    const token = localStorage.getItem("token");
+    if (!adminItemsList) return;
 
-    if (!token) {
+    if (!getToken()) {
         adminItemsList.textContent = "Please login as admin first.";
         return;
     }
 
     try {
-        const response = await fetch(
-            "http://localhost:5000/api/items",
-            {
-                headers: {
-                    "Authorization": "Bearer " + token
-                }
-            }
-        );
+        const result = await apiRequest("/api/items", {
+            headers: authHeaders()
+        });
 
-        const result = await response.json();
-
-        if (!response.ok) {
-            adminItemsList.textContent =
-                result.message || "Unable to load items.";
-            return;
-        }
-
-        const items = Array.isArray(result)
-            ? result
-            : result.data || [];
+        const items = getData(result);
 
         adminItemsList.innerHTML = "";
 
-        if (items.length === 0) {
+        if (!Array.isArray(items) || items.length === 0) {
             adminItemsList.textContent = "No items found.";
             return;
         }
 
         items.forEach(item => {
-            const card = document.createElement("div");
-            card.className = "item-card";
+            const card = createElement("div", "item-card");
 
-            const heading = document.createElement("h3");
-            heading.textContent = item.itemName;
+            const deleteButton = createElement(
+                "button",
+                "delete-item-btn",
+                "Delete Item"
+            );
 
-            const details = document.createElement("p");
-            details.textContent =
-                "Type: " + item.type +
-                " | Category: " + item.category;
+            deleteButton.type = "button";
+            deleteButton.dataset.id = item._id;
 
-            const location = document.createElement("p");
-            location.textContent = "Location: " + item.location;
+            card.append(
+                createElement("h3", "", item.itemName || "Unnamed Item"),
+                createElement("p", "", `Type: ${item.type || ""} | Category: ${item.category || ""}`),
+                createElement("p", "", `Location: ${item.location || ""}`),
+                createElement("p", "", `Status: ${item.status || ""}`),
+                createElement("p", "", `Item ID: ${item._id}`),
+                deleteButton
+            );
 
-            const status = document.createElement("p");
-            status.textContent = "Status: " + item.status;
-
-            const itemId = document.createElement("p");
-            itemId.textContent = "Item ID: " + item._id;
-
-           // Create Delete button
-const deleteButton = document.createElement("button");
-
-deleteButton.textContent = "Delete Item";
-deleteButton.className = "delete-item-btn";
-deleteButton.dataset.id = item._id;
-
-// Add all elements to the card
-card.append(
-    heading,
-    details,
-    location,
-    status,
-    itemId,
-    deleteButton
-);
-
-adminItemsList.appendChild(card);
+            adminItemsList.appendChild(card);
         });
 
     } catch (error) {
-        adminItemsList.textContent = "Server connection failed.";
-        console.error(error);
+        adminItemsList.textContent = error.message;
+        console.error("Admin items error:", error);
     }
 }
 
-adminItemsButton.addEventListener("click", loadAllItems);
+if (adminItemsButton) {
+    adminItemsButton.addEventListener("click", loadAllItems);
+}
+
+// ========================================
 // DELETE ITEM (ADMIN ONLY)
+// ========================================
 
-adminItemsList.addEventListener("click", async function(event) {
+if (adminItemsList) {
+    adminItemsList.addEventListener("click", async function(event) {
+        const button = event.target.closest(".delete-item-btn");
 
-    const button = event.target.closest(".delete-item-btn");
+        if (!button) return;
 
-    if (!button) return;
-
-    const confirmDelete = confirm(
-        "Are you sure you want to delete this item?"
-    );
-
-    if (!confirmDelete) return;
-
-    const itemId = button.dataset.id;
-    const token = localStorage.getItem("token");
-
-    try {
-        const response = await fetch(
-            `http://localhost:5000/api/items/${itemId}`,
-            {
-                method: "DELETE",
-                headers: {
-                    "Authorization": "Bearer " + token
-                }
-            }
+        const confirmDelete = confirm(
+            "Are you sure you want to delete this item?"
         );
 
-        const result = await response.json();
+        if (!confirmDelete) return;
 
-        if (!response.ok) {
-            alert(result.message || "Unable to delete item.");
+        const itemId = button.dataset.id;
+
+        if (!getToken()) {
+            alert("Please login as admin first.");
             return;
         }
 
-        alert("Item deleted successfully!");
+        try {
+            const result = await apiRequest(
+                `/api/items/${encodeURIComponent(itemId)}`,
+                {
+                    method: "DELETE",
+                    headers: authHeaders()
+                }
+            );
 
-        await loadAllItems();
-        await loadItems();
+            alert(result.message || "Item deleted successfully!");
 
-    } catch (error) {
-        alert("Server connection failed.");
-        console.error(error);
-    }
-});
+            await loadAllItems();
+            await loadItems();
+
+        } catch (error) {
+            alert(error.message);
+            console.error("Delete item error:", error);
+        }
+    });
+}
+
+// ========================================
+// INITIAL PAGE LOAD
+// ========================================
+
+loadItems();
