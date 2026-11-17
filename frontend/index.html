@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Lost & Found Portal</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app-layout">
+
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar">
+        <h2>Campus <span>Find</span></h2>
+        <p class="sidebar-subtitle">Lost & Found Portal</p>
+
+        <nav class="sidebar-nav">
+            <a href="#home">🏠 Home</a>
+            <a href="#report">📝 Report Item</a>
+            <a href="#items">🔍 Browse Items</a>
+            <a href="#myClaims">📋 My Claims</a>
+            <a href="#login">🔐 Login</a>
+            <a href="#register">👤 Register</a>
+        </nav>
+
+        <button id="logoutButton">Logout</button>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="app-main">
+
+        <!-- HOME DASHBOARD -->
+        <section id="home" class="dashboard-section">
+            <p>WELCOME TO CAMPUS FIND</p>
+            <h1>Campus Lost & Found Portal</h1>
+            <p>
+                Lost something on campus? Found something?
+                Help your campus community reconnect with their belongings.
+            </p>
+
+            <a href="#items">Browse Items</a>
+            <a href="#report">Report an Item</a>
+            <section id="home" class="dashboard-section">
+
+    <p>WELCOME TO CAMPUS FIND</p>
+    <h1>Campus Lost & Found Portal</h1>
+
+    <p>
+        Lost something on campus? Found something?
+        Help your campus community reconnect with their belongings.
+    </p>
+
+    <a href="#items">Browse Items</a>
+    <a href="#report">Report an Item</a>
+    <div class="stats-container">
+
+        <div class="stat-card">
+            <h3>Total Items</h3>
+            <p id="totalItems">0</p>
+        </div>
+
+        <div class="stat-card">
+            <h3>Lost Items</h3>
+            <p id="lostItems">0</p>
+        </div>
+
+        <div class="stat-card">
+            <h3>Found Items</h3>
+            <p id="foundItems">0</p>
+        </div>
+
+        <div class="stat-card">
+            <h3>Resolved Items</h3>
+            <p id="resolvedItems">0</p>
+        </div>
+
+    </div>
+
+</section>
+        </section>
+
+        <!-- REPORT ITEM -->
+        <section id="report">
+            <h2>Report a Lost or Found Item</h2>
+            <p>Enter the details of the item below.</p>
+
+            <form id="reportForm">
+                <label>Item Name</label>
+                <input type="text" name="itemName" placeholder="Enter item name" required>
+
+                <label>Description</label>
+                <textarea name="description" placeholder="Describe the item" required></textarea>
+
+                <label>Category</label>
+                <select name="category" required>
+                    <option value="">Select Category</option>
+                    <option value="Electronics">Electronics</option>
+                    <option value="Accessories">Accessories</option>
+                    <option value="Stationery">Stationery</option>
+                    <option value="Clothing">Clothing</option>
+                    <option value="Other">Other</option>
+                </select>
+
+                <label>Item Type</label>
+                <select name="type" required>
+                    <option value="">Select Type</option>
+                    <option value="Lost">Lost</option>
+                    <option value="Found">Found</option>
+                </select>
+
+                <label>Location</label>
+                <input type="text" name="location" placeholder="Where was it lost or found?" required>
+
+                <label>Date</label>
+                <input type="date" name="date" required>
+
+                <button type="submit">Submit Report</button>
+                <p id="reportMessage"></p>
+            </form>
+        </section>
+
+        <!-- BROWSE ITEMS -->
+        <section id="items">
+            <h2>Browse Campus Items</h2>
+            <p>Search for lost and found belongings.</p>
+
+            <input type="text" id="searchInput" placeholder="Search item name">
+
+            <button type="button" id="searchButton">Search</button>
+            <button type="button" id="showAllButton">Show All</button>
+
+            <div class="filter-area">
+                <select id="typeFilter">
+                    <option value="">All Types</option>
+                    <option value="Lost">Lost</option>
+                    <option value="Found">Found</option>
+                </select>
+
+                <select id="categoryFilter">
+                    <option value="">All Categories</option>
+                    <option value="Electronics">Electronics</option>
+                    <option value="Accessories">Accessories</option>
+                    <option value="Stationery">Stationery</option>
+                    <option value="Clothing">Clothing</option>
+                    <option value="Other">Other</option>
+                </select>
+
+                <button type="button" id="filterButton">Filter by Type</button>
+                <button type="button" id="categoryFilterButton">Apply Filters</button>
+            </div>
+
+            <div id="itemsList"></div>
+        </section>
+
+        <!-- CLAIM ITEM -->
+        <section id="claim">
+            <h2>Claim an Item</h2>
+            <p>If an item belongs to you, submit a claim.</p>
+
+            <form id="claimForm">
+                <label>Item ID</label>
+                <input type="text" name="itemId" placeholder="Enter item ID" required>
+
+                <label>Why are you claiming this item?</label>
+                <textarea name="message" placeholder="Provide details to identify the item" required></textarea>
+
+                <button type="submit">Submit Claim</button>
+                <p id="claimMessage"></p>
+            </form>
+        </section>
+
+        <!-- MY CLAIMS -->
+        <section id="myClaims">
+            <h2>My Claims</h2>
+            <p>Track the status of your submitted claims.</p>
+
+            <button type="button" id="myClaimsButton">View My Claims</button>
+
+            <div id="myClaimsList"></div>
+        </section>
+
+     <!-- ADMIN CLAIM MANAGEMENT -->
+<section id="adminClaims">
+    <h2>Admin Claim Management</h2>
+    <p>View and review all student claims.</p>
+
+    <button type="button" id="adminClaimsButton">
+        View All Claims
+    </button>
+
+    <div id="adminClaimsList"></div>
+</section>
+
+<!-- ADMIN ITEM MANAGEMENT -->
+<section id="adminItems">
+    <h2>Admin Item Management</h2>
+    <p>View and manage all reported items.</p>
+
+    <button type="button" id="adminItemsButton">
+        View All Items
+    </button>
+
+    <div id="adminItemsList"></div>
+</section>
+<!-- My Reported Items -->
+<section id="myReportedItems">
+
+    <h2>My Reported Items</h2>
+
+    <p>View all the items you have reported.</p>
+
+    <button type="button" id="myReportedItemsButton">
+        View My Reported Items
+    </button>
+
+    <div id="myReportedItemsList"></div>
+
+</section>
+
+
+        <!-- LOGIN -->
+        <section id="login">
+            <h2>Student Login</h2>
+            <p>Login to access your account.</p>
+
+            <form id="loginForm">
+                <label>Email</label>
+                <input type="email" name="email" placeholder="Enter email" required>
+
+                <label>Password</label>
+                <input type="password" name="password" placeholder="Enter password" required>
+
+                <button type="submit">Login</button>
+                <p id="loginMessage"></p>
+            </form>
+        </section>
+
+        <!-- REGISTER -->
+        <section id="register">
+            <h2>Create Student Account</h2>
+            <p>Register to use the Campus Lost & Found Portal.</p>
+
+            <form id="registerForm">
+                <label>Full Name</label>
+                <input type="text" name="name" placeholder="Enter your name" required>
+
+                <label>Email</label>
+                <input type="email" name="email" placeholder="Enter your email" required>
+
+                <label>Password</label>
+                <input type="password" name="password" placeholder="Create password" required>
+
+                <button type="submit">Register</button>
+                <p id="registerMessage"></p>
+            </form>
+        </section>
+
+        <footer>
+            <p>Campus Lost & Found Portal | Helping Students Find Their Belongings</p>
+        </footer>
+
+    </main>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
